@@ -7,14 +7,23 @@ cd docker
 docker-compose up -d
 ```
 
-### 2. Executar o projeto no *eclipse*
+### 2. Configurar email de envio no arquivo de "application.properties"
 
-### 3. Links:
+```
+# >>> YOUR EMAIL INFO GOES HERE
+
+mail.from=mayconfsousa@gmail.com
+mail.password=***
+```
+
+### 3. Executar o projeto no *eclipse*
+
+### 4. Links:
 
 * [Swagger Docs] http://localhost:8080/swagger-ui.html
 * [RabbitMQ] http://localhost:15672
 
-### 4. Lógica de negócio
+### 5. Lógica de negócio
 
 ```
 1. Adicionar novas "persons" :: http://localhost:8080/api/v1/persons
