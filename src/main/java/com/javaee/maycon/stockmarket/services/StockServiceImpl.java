@@ -8,12 +8,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import com.javaee.maycon.stockmarket.config.MailConfig;
 import com.javaee.maycon.stockmarket.domain.Company;
 import com.javaee.maycon.stockmarket.domain.Message;
 import com.javaee.maycon.stockmarket.domain.Person;
 import com.javaee.maycon.stockmarket.domain.Stock;
 import com.javaee.maycon.stockmarket.domain.StockIssue;
 import com.javaee.maycon.stockmarket.domain.StockPurchase;
+import com.javaee.maycon.stockmarket.domain.User;
 import com.javaee.maycon.stockmarket.repositories.CompanyRepository;
 import com.javaee.maycon.stockmarket.repositories.PersonRepository;
 import com.javaee.maycon.stockmarket.repositories.StockRepository;
@@ -23,16 +25,16 @@ public class StockServiceImpl implements StockService {
 
   @Autowired
   private StockRepository stockRepository;
-  
+
   @Autowired
   private CompanyRepository companyRepository;
-  
+
   @Autowired
   private PersonRepository personRepository;
-  
+
   @Autowired
   private MessageService messageService;
-  
+
   @Override
   public List<Stock> findAll() {
     return stockRepository.findAll();
@@ -52,7 +54,7 @@ public class StockServiceImpl implements StockService {
 
     return stockOptional.get();
   }
-  
+
   @Override
   public List<Stock> findByOwnerId(String companyId) {
     return stockRepository.findByOwnerId(companyId);
@@ -89,20 +91,28 @@ public class StockServiceImpl implements StockService {
     Optional<Person> personBuyer = personRepository.findById(stockPurchase.getBuyerId());
     Optional<Company> companySeller = companyRepository.findById(stockPurchase.getSellerId());
     Optional<Person> personSeller = personRepository.findById(stockPurchase.getSellerId());
-    
-    String buyerId = companyBuyer.isPresent() ? companyBuyer.get().getId() : personBuyer.get().getId();
-    String sellerId = companySeller.isPresent() ? companySeller.get().getId() : personSeller.get().getId();
-    
-    List<Stock> sellerStocks = findByOwnerId(sellerId);
-    
+
+    User buyer = (User) (companyBuyer.isPresent() ? companyBuyer.get() : personBuyer.get());
+    User seller = (User) (companySeller.isPresent() ? companySeller.get() : personSeller.get());
+
+    List<Stock> sellerStocks = findByOwnerId(seller.getId());
+
     for (int i = 0; i < stockPurchase.getQuantity(); i++) {
       Stock stock = sellerStocks.get(i);
-      stock.setOwnerId(buyerId);
+      stock.setOwnerId(buyer.getId());
       stock.setPurchaseDate(new Date());
       stock.setCurrentValue(stockPurchase.getValue());
       stockRepository.save(stock);
     }
 
+    MailConfig config = new MailConfig();
+    config.sendMail(buyer.getEmail(), "Compra de ações efetivada com sucesso!",
+        String.format(
+            "Sua compra de %d ação(es) no valor de R$ %.2f do vendedor \"%s\" foi efetivada com sucesso.",
+            stockPurchase.getQuantity(), stockPurchase.getValue(), seller.getName()));
+    config.sendMail(seller.getEmail(), "Venda de ações efetivada com sucesso!",
+        String.format("%d ação(es) no valor de R$ %.2f foram compradas por \"%s\".",
+            stockPurchase.getQuantity(), stockPurchase.getValue(), buyer.getName()));
   }
 
 }
