@@ -49,15 +49,15 @@ public class StockServiceImpl implements StockService {
     Optional<Stock> stockOptional = stockRepository.findById(id);
 
     if (!stockOptional.isPresent()) {
-      throw new IllegalArgumentException("Stock not found for ID value: " + id.toString());
+      throw new IllegalArgumentException("Stock not found for ID value: " + id);
     }
 
     return stockOptional.get();
   }
 
   @Override
-  public List<Stock> findByOwnerId(String companyId) {
-    return stockRepository.findByOwnerId(companyId);
+  public List<Stock> findByOwnerIdAndCurrentValue(String companyId, Double currentValue) {
+    return stockRepository.findByOwnerIdAndCurrentValue(companyId, currentValue);
   }
 
   @Override
@@ -80,6 +80,24 @@ public class StockServiceImpl implements StockService {
 
   @Override
   public void requestPurchase(StockPurchase stockPurchase) {
+    User buyer = getUserById(stockPurchase.getBuyerId());
+    if (buyer == null) {
+      throw new IllegalArgumentException(
+          "Buyer not found for ID value: " + stockPurchase.getBuyerId());
+    }
+
+    User seller = getUserById(stockPurchase.getSellerId());
+    if (seller == null) {
+      throw new IllegalArgumentException(
+          "Seller not found for ID value: " + stockPurchase.getBuyerId());
+    }
+
+    List<Stock> sellerStocks = findByOwnerIdAndCurrentValue(seller.getId(), stockPurchase.getValue());
+    if (sellerStocks.size() < stockPurchase.getQuantity()) {
+      throw new IllegalArgumentException(
+          "Seller does not have enough stock to complete the transaction. Please check the quantity and value parameters.");
+    }
+
     Message message = new Message();
     message.setStockPurchase(stockPurchase);
     messageService.sendMessage(message);
@@ -87,16 +105,11 @@ public class StockServiceImpl implements StockService {
 
   @Override
   public void processPurchase(StockPurchase stockPurchase) {
-    Optional<Company> companyBuyer = companyRepository.findById(stockPurchase.getBuyerId());
-    Optional<Person> personBuyer = personRepository.findById(stockPurchase.getBuyerId());
-    Optional<Company> companySeller = companyRepository.findById(stockPurchase.getSellerId());
-    Optional<Person> personSeller = personRepository.findById(stockPurchase.getSellerId());
+    User buyer = getUserById(stockPurchase.getBuyerId());
+    User seller = getUserById(stockPurchase.getSellerId());
 
-    User buyer = (User) (companyBuyer.isPresent() ? companyBuyer.get() : personBuyer.get());
-    User seller = (User) (companySeller.isPresent() ? companySeller.get() : personSeller.get());
-
-    List<Stock> sellerStocks = findByOwnerId(seller.getId());
-
+    List<Stock> sellerStocks = findByOwnerIdAndCurrentValue(seller.getId(), stockPurchase.getValue());
+    
     for (int i = 0; i < stockPurchase.getQuantity(); i++) {
       Stock stock = sellerStocks.get(i);
       stock.setOwnerId(buyer.getId());
@@ -106,13 +119,24 @@ public class StockServiceImpl implements StockService {
     }
 
     MailConfig config = new MailConfig();
-    config.sendMail(buyer.getEmail(), "Compra de ações efetivada com sucesso!",
-        String.format(
-            "Sua compra de %d ação(es) no valor de R$ %.2f do vendedor \"%s\" foi efetivada com sucesso.",
-            stockPurchase.getQuantity(), stockPurchase.getValue(), seller.getName()));
+    config.sendMail(buyer.getEmail(), "Compra de ações efetivada com sucesso!", String.format(
+        "Sua compra de %d ação(es) no valor de R$ %.2f do vendedor \"%s\" foi efetivada com sucesso.",
+        stockPurchase.getQuantity(), stockPurchase.getValue(), seller.getName()));
     config.sendMail(seller.getEmail(), "Venda de ações efetivada com sucesso!",
         String.format("%d ação(es) no valor de R$ %.2f foram compradas por \"%s\".",
             stockPurchase.getQuantity(), stockPurchase.getValue(), buyer.getName()));
+  }
+
+  private User getUserById(String id) {
+    Optional<Company> companyUser = companyRepository.findById(id);
+    Optional<Person> personUser = personRepository.findById(id);
+
+    if (companyUser.isPresent())
+      return (User) companyUser.get();
+    else if (personUser.isPresent())
+      return (User) personUser.get();
+    else
+      return null;
   }
 
 }

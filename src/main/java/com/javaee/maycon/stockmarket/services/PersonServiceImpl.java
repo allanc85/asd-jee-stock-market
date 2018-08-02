@@ -29,7 +29,7 @@ public class PersonServiceImpl implements PersonService {
     Optional<Person> personOptional = personRepository.findById(id);
 
     if (!personOptional.isPresent()) {
-      throw new IllegalArgumentException("Person not found for ID value: " + id.toString());
+      throw new IllegalArgumentException("Person not found for ID value: " + id);
     }
 
     return personOptional.get();

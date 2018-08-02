@@ -8,6 +8,6 @@ import com.javaee.maycon.stockmarket.domain.Stock;
 @Repository
 public interface StockRepository extends MongoRepository<Stock, String> {
 
-  List<Stock> findByOwnerId(String companyId);
+  List<Stock> findByOwnerIdAndCurrentValue(String ownerId, Double currentValue);
 
 }

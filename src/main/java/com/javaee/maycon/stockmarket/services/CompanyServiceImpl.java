@@ -29,7 +29,7 @@ public class CompanyServiceImpl implements CompanyService {
 		Optional<Company> companyOptional = companyRepository.findById(id);
 
 		if (!companyOptional.isPresent()) {
-			throw new IllegalArgumentException("Company not found for ID value: " + id.toString());
+			throw new IllegalArgumentException("Company not found for ID value: " + id);
 		}
 
 		return companyOptional.get();

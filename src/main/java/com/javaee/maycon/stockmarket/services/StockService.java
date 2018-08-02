@@ -11,7 +11,7 @@ public interface StockService {
 
   Stock findById(String id);
   
-  List<Stock> findByOwnerId(String companyId);
+  List<Stock> findByOwnerIdAndCurrentValue(String ownerId, Double currentValue);
 
   List<Stock> issue(StockIssue stockIssue);
 
